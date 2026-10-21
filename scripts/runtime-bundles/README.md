@@ -32,6 +32,13 @@ partitions, Magisk files, device identifiers, or user data are included.
   excludes OAuth credentials, settings, conversations, projects, and all device
   data. Review Google's redistribution terms before publishing an APK containing
   this binary.
+- `qwen`: the checksum-pinned official `@qwen-code/qwen-code` npm payload
+  (zero regular dependencies; optional native add-ons are excluded because PRoot
+  cannot load them) plus the `/usr/local/bin/qwen` launcher and version marker.
+  Build it with `scripts/runtime-bundles/build-qwen-from-npm.sh`; the overlay
+  excludes settings, credentials, sessions, and projects. Online builds
+  download this artifact from the runtime GitHub release; offline builds embed
+  the identical checksum-verified artifact in the APK.
 
 The current artifact metadata and SHA-256 checksums live in
 `dist/runtime-bundles/manifest.json`. Large `.tar.zst` files and downloaded

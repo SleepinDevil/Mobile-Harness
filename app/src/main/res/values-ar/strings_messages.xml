@@ -128,6 +128,7 @@
     <string name="vm_read_named_failed">تعذّرت قراءة %1$s</string>
     <string name="vm_antigravity_signin_before_task">سجّل الدخول إلى Antigravity من الإعدادات قبل بدء مهمة.</string>
     <string name="vm_dsh_claude_unsupported">لا يدعم DeepSeek Harness تسجيل الدخول باشتراك Claude — اختر مزوّداً يعتمد على مفتاح من الإعدادات.</string>
+    <string name="vm_qwen_claude_unsupported">لا يدعم Qwen Code تسجيل الدخول باشتراك Claude — اختر مزوّداً يعتمد على مفتاح من الإعدادات.</string>
     <string name="vm_understanding_request">جارٍ فهم طلبك</string>
     <string name="vm_preparing_safe_plan">جارٍ إعداد خطة آمنة</string>
     <string name="vm_changes_undone">تم التراجع عن التغييرات</string>

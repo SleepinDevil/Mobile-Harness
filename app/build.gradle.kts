@@ -44,6 +44,7 @@ val prepareOfflineRuntimeAssets = tasks.register<Sync>("prepareOfflineRuntimeAss
         runtimeBundleDir.file("pocketdev-python-arm64-2026.09.2.tar.zst"),
         runtimeBundleDir.file("pocketdev-android-arm64-2026.09.1.tar.zst"),
         runtimeBundleDir.file("pocketdev-dsh-arm64-2026.09.1.tar.zst"),
+        runtimeBundleDir.file("pocketdev-qwen-arm64-2026.09.1.tar.zst"),
     )
     into(generatedRuntimeAssets.map { it.dir("offline/runtime") })
 }

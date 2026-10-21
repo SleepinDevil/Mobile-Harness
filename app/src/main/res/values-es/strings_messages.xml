@@ -128,6 +128,7 @@
     <string name="vm_read_named_failed">No se pudo leer %1$s</string>
     <string name="vm_antigravity_signin_before_task">Inicia sesión en Antigravity desde Ajustes antes de empezar una tarea.</string>
     <string name="vm_dsh_claude_unsupported">DeepSeek Harness no admite el inicio de sesión con suscripción de Claude: elige un proveedor con clave en Ajustes.</string>
+    <string name="vm_qwen_claude_unsupported">Qwen Code no admite el inicio de sesión con suscripción de Claude: elige un proveedor con clave en Ajustes.</string>
     <string name="vm_understanding_request">Entendiendo tu solicitud</string>
     <string name="vm_preparing_safe_plan">Preparando un plan seguro</string>
     <string name="vm_changes_undone">Cambios deshechos</string>

@@ -395,5 +395,6 @@ class AgentProviderPresetTest {
         assertEquals(AgentKind.ANTIGRAVITY, AgentKind.fromStored("antigravity"))
         assertEquals(AgentKind.CLAUDE_CODE, AgentKind.fromStored("CLAUDE_CODE"))
         assertEquals(AgentKind.DEEPSEEK_HARNESS, AgentKind.fromStored("DEEPSEEK_HARNESS"))
+        assertEquals(AgentKind.QWEN_CODE, AgentKind.fromStored("qwen-code"))
     }
 }

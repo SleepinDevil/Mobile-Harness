@@ -72,6 +72,12 @@ enum class AgentKind(
         "Google's official coding agent · Google account",
         "39.9 MB",
     ),
+    QWEN_CODE(
+        "qwen-code",
+        "Qwen Code",
+        "Alibaba's open coding agent · API-key providers",
+        "24.5 MB",
+    ),
     ;
 
     companion object {
@@ -119,9 +125,15 @@ fun inferredDshApiForUrl(baseUrl: String): String {
     }
 }
 
-/** Resolves the protocol DeepSeek Harness will actually use for this saved profile. */
+/**
+ * Resolves the protocol the agent will actually use for this saved profile.
+ * DeepSeek Harness exposes the wire picker for every gateway-style provider;
+ * Qwen Code speaks both wires natively and needs the choice only for CUSTOM.
+ */
 fun providerProtocolForAgent(profile: ProviderProfile, agent: AgentKind): ProviderProtocol {
-    if (agent != AgentKind.DEEPSEEK_HARNESS || profile.kind !in DSH_PROTOCOL_PROVIDERS) {
+    val honorsWirePicker = agent == AgentKind.DEEPSEEK_HARNESS ||
+        (agent == AgentKind.QWEN_CODE && profile.kind == ProviderKind.CUSTOM)
+    if (!honorsWirePicker || profile.kind !in DSH_PROTOCOL_PROVIDERS) {
         return profile.kind.protocol
     }
     val api = if (profile.kind.fixedProtocol) defaultDshApiForProvider(profile.kind) else profile.dshApi
@@ -137,6 +149,9 @@ fun providersForAgent(agent: AgentKind): List<ProviderKind> = when (agent) {
     AgentKind.DEEPSEEK_HARNESS -> ProviderKind.entries.filter { it in DEEPSEEK_HARNESS_PROVIDERS }
     AgentKind.CLAUDE_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.OPENCODE_ZEN }
     AgentKind.ANTIGRAVITY -> emptyList()
+    // Qwen Code speaks OpenAI and Anthropic wire formats natively; only the
+    // Claude subscription login has no key-based equivalent to fall back on.
+    AgentKind.QWEN_CODE -> ProviderKind.entries.filterNot { it == ProviderKind.CLAUDE }
 }
 
 data class ProviderProfile(

@@ -128,6 +128,7 @@
     <string name="vm_read_named_failed">%1$s पढ़ा नहीं जा सका</string>
     <string name="vm_antigravity_signin_before_task">टास्क शुरू करने से पहले सेटिंग्स से Antigravity में साइन इन करें।</string>
     <string name="vm_dsh_claude_unsupported">DeepSeek Harness, Claude सब्सक्रिप्शन लॉगिन का समर्थन नहीं करता — सेटिंग्स में की-आधारित प्रोवाइडर चुनें।</string>
+    <string name="vm_qwen_claude_unsupported">Qwen Code, Claude सब्सक्रिप्शन लॉगिन का समर्थन नहीं करता — सेटिंग्स में की-आधारित प्रोवाइडर चुनें।</string>
     <string name="vm_understanding_request">आपका अनुरोध समझा जा रहा है</string>
     <string name="vm_preparing_safe_plan">एक सुरक्षित योजना तैयार की जा रही है</string>
     <string name="vm_changes_undone">बदलाव पूर्ववत किए गए</string>

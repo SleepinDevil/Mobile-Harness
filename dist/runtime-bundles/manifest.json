@@ -76,6 +76,24 @@
         "Sessions",
         "Chats and projects"
       ]
+    },
+    "qwen": {
+      "version": "2026.09.1",
+      "file": "pocketdev-qwen-arm64-2026.09.1.tar.zst",
+      "sha256": "21ae0fd21366d32bc84e2fc47600521eb93ff44d4211deba12b97b04328c4e98",
+      "compressedBytes": 25711015,
+      "uncompressedBytes": 137246720,
+      "includes": [
+        "Qwen Code 0.25.3",
+        "Version marker",
+        "Launcher"
+      ],
+      "excludes": [
+        "Settings",
+        "Credentials",
+        "Sessions",
+        "Projects"
+      ]
     }
   }
 }

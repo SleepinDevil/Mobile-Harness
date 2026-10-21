@@ -18,6 +18,7 @@
     <string name="rt_install_installing_named">Instalando %1$s</string>
     <string name="rt_install_newer_release">Apareció una versión más reciente de %1$s. Vuelve a comprobar antes de actualizar.</string>
     <string name="rt_install_dsh_update_failed">La actualización de DeepSeek Harness falló; se conservó la versión instalada</string>
+    <string name="rt_install_qwen_update_failed">La actualización de Qwen Code falló; se conservó la versión instalada</string>
     <string name="rt_install_stack_ready">Las herramientas de %1$s están listas</string>
     <string name="rt_install_web_not_removable">Las herramientas web forman parte del entorno base y no se pueden quitar</string>
     <string name="rt_install_removing_stack">Quitando las herramientas de %1$s</string>

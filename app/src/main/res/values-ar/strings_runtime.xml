@@ -18,6 +18,7 @@
     <string name="rt_install_installing_named">جارٍ تثبيت %1$s</string>
     <string name="rt_install_newer_release">ظهر إصدار أحدث من %1$s. تحقّق مرة أخرى قبل التحديث.</string>
     <string name="rt_install_dsh_update_failed">فشل تحديث DeepSeek Harness؛ تم الإبقاء على الإصدار المثبّت</string>
+    <string name="rt_install_qwen_update_failed">فشل تحديث Qwen Code؛ تم الإبقاء على الإصدار المثبّت</string>
     <string name="rt_install_stack_ready">أدوات %1$s جاهزة</string>
     <string name="rt_install_web_not_removable">أدوات الويب جزء من بيئة التشغيل الأساسية ولا يمكن إزالتها</string>
     <string name="rt_install_removing_stack">جارٍ إزالة أدوات %1$s</string>

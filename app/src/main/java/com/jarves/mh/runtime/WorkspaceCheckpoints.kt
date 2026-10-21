@@ -297,6 +297,7 @@ class WorkspaceCheckpoints(
             ".gradle",
             ".idea",
             ".next",
+            ".qwen",
             ".dart_tool",
             ".venv",
             "build",

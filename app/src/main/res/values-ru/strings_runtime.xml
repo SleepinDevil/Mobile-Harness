@@ -18,6 +18,7 @@
     <string name="rt_install_installing_named">Установка %1$s</string>
     <string name="rt_install_newer_release">Появилась более новая версия %1$s. Проверьте ещё раз перед обновлением.</string>
     <string name="rt_install_dsh_update_failed">Не удалось обновить DeepSeek Harness; установленная версия сохранена</string>
+    <string name="rt_install_qwen_update_failed">Не удалось обновить Qwen Code; установленная версия сохранена</string>
     <string name="rt_install_stack_ready">Инструменты %1$s готовы</string>
     <string name="rt_install_web_not_removable">Веб-инструменты входят в базовую среду и не могут быть удалены</string>
     <string name="rt_install_removing_stack">Удаление инструментов %1$s</string>

@@ -73,7 +73,8 @@ internal class OpenRouterRoutingGateway(
             writeJson(output, 200, JSONObject().put("input_tokens", body.decodeToString().length / 4 + 1).toString())
             return
         }
-        if (method != "POST" || !path.endsWith("/messages")) {
+        val anthropicMessages = path.endsWith("/messages")
+        if (method != "POST" || !(anthropicMessages || path.endsWith("/chat/completions"))) {
             writeJson(output, 404, errorJson("Unsupported OpenRouter endpoint"))
             return
         }
@@ -90,8 +91,10 @@ internal class OpenRouterRoutingGateway(
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", headers["accept"] ?: "application/json")
                 connection.setRequestProperty("Authorization", "Bearer $apiKey")
-                connection.setRequestProperty("anthropic-version", headers["anthropic-version"] ?: "2023-06-01")
-                headers["anthropic-beta"]?.let { connection.setRequestProperty("anthropic-beta", it) }
+                if (anthropicMessages) {
+                    connection.setRequestProperty("anthropic-version", headers["anthropic-version"] ?: "2023-06-01")
+                    headers["anthropic-beta"]?.let { connection.setRequestProperty("anthropic-beta", it) }
+                }
                 connection.outputStream.use { it.write(routedBody) }
 
                 val code = connection.responseCode

@@ -74,6 +74,7 @@ class RuntimeInstaller(private val context: Context) {
     private val devStacksFile = File(rootfs, ".pocket-dev-stacks.json")
     private val dshMarker = File(rootfs, ".pocket-dsh-version")
     private val agyMarker = File(rootfs, ".pocket-agy-version")
+    private val qwenMarker = File(rootfs, ".pocket-qwen-version")
     private val githubCliMarker = File(rootfs, ".pocket-github-cli-version")
     private val dshAndroidCompatibilityMarker = File(rootfs, ".pocket-dsh-android-compat-version")
     private val macosMetadataRepairMarker = File(rootfs, ".pocket-macos-metadata-repair")
@@ -236,6 +237,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(proot, 0.985f, onProgress)
+            com.jarves.mh.model.AgentKind.QWEN_CODE -> ensureQwenInstalled(proot, 0.985f, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_setup_complete), 1f))
         return InstalledRuntime(proot, rootfs)
@@ -255,6 +257,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(runtime.proot, 0.05f, onProgress)
+            com.jarves.mh.model.AgentKind.QWEN_CODE -> ensureQwenInstalled(runtime.proot, 0.05f, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_ready, agent.localizedTitle(context)), 1f))
     }
@@ -274,6 +277,11 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> isInstalled() &&
                 File(rootfs, AGY_GUEST_PATH.removePrefix("/")).canExecute() &&
                 !agyMarker.readTextOrNull().isNullOrBlank()
+            com.jarves.mh.model.AgentKind.QWEN_CODE -> isInstalled() &&
+                // /usr/local/bin/qwen is an absolute guest symlink. File.exists() follows it
+                // against Android's host root and therefore reports false outside PRoot.
+                File(rootfs, "usr/local/lib/qwen/node_modules/@qwen-code/qwen-code/cli-entry.js").isFile &&
+                qwenMarker.readTextOrNull() == QWEN_VERSION
         }
     }
 
@@ -285,6 +293,8 @@ class RuntimeInstaller(private val context: Context) {
     }
 
     val agyVersion: String get() = agyMarker.readTextOrNull().orEmpty()
+
+    val qwenVersion: String get() = qwenMarker.readTextOrNull().orEmpty()
 
     val githubCliVersion: String get() = githubCliMarker.readTextOrNull().orEmpty()
 
@@ -362,6 +372,11 @@ class RuntimeInstaller(private val context: Context) {
             ?.trim()
             ?.takeIf { it.isNotEmpty() && File(rootfs, AGY_GUEST_PATH.removePrefix("/")).canExecute() }
             ?.let { put(com.jarves.mh.model.AgentKind.ANTIGRAVITY, it) }
+
+        qwenMarker.readTextOrNull()
+            ?.trim()
+            ?.takeIf { isAgentInstalled(com.jarves.mh.model.AgentKind.QWEN_CODE) }
+            ?.let { put(com.jarves.mh.model.AgentKind.QWEN_CODE, it) }
     }
 
     /** Checks each installed agent against its own authoritative release source. */
@@ -389,6 +404,14 @@ class RuntimeInstaller(private val context: Context) {
                         put(com.jarves.mh.model.AgentKind.ANTIGRAVITY, AgentUpdateInfo(current, latest))
                     }
             }
+            installed[com.jarves.mh.model.AgentKind.QWEN_CODE]?.let { current ->
+                // Qwen Code needs the launcher layout PocketDev's bundle creates and
+                // runs without the optional native add-ons. Only advertise the
+                // release validated and bundled with this PocketDev build.
+                QWEN_VERSION.takeIf { isVersionNewer(it, current) }?.let { compatible ->
+                    put(com.jarves.mh.model.AgentKind.QWEN_CODE, AgentUpdateInfo(current, compatible))
+                }
+            }
         }
     }
 
@@ -402,6 +425,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> updateClaude(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> updateDsh(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> updateAgy(runtime, expectedVersion, onProgress)
+            com.jarves.mh.model.AgentKind.QWEN_CODE -> updateQwen(runtime, expectedVersion, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_version_ready, agent.localizedTitle(context), expectedVersion), 1f, event = RuntimeInstallEvent.COMPLETED))
     }
@@ -527,6 +551,86 @@ class RuntimeInstaller(private val context: Context) {
         dshAndroidCompatibilityMarker.writeText(DSH_ANDROID_COMPATIBILITY_VERSION)
     }
 
+    private suspend fun updateQwen(
+        runtime: InstalledRuntime,
+        expectedVersion: String,
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
+        check(expectedVersion == QWEN_VERSION) {
+            "Qwen Code $expectedVersion is not compatible with this PocketDev build"
+        }
+        val quotedVersion = expectedVersion.replace(Regex("[^0-9A-Za-z.+-]"), "")
+        check(quotedVersion == expectedVersion) { "Invalid Qwen Code version" }
+        runGuestCommand(
+            proot = runtime.proot,
+            command = "set -e; next=/usr/local/lib/qwen.updating; " +
+                "rm -rf \"\$next\"; mkdir -p \"\$next\"; " +
+                "cd \"\$next\"; npm init -y >/dev/null; " +
+                "npm install --omit=dev --omit=optional --no-audit --no-fund @qwen-code/qwen-code@$quotedVersion",
+            displayCommand = "npm install @qwen-code/qwen-code@$quotedVersion",
+            fraction = 0.55f,
+            timeoutMs = 20L * 60L * 1000L,
+            onProgress = onProgress,
+            failureMessage = str(R.string.rt_install_qwen_update_failed),
+        )
+        // The package ships zero regular dependencies, so the staged tree is
+        // complete; replicate the launcher symlinks the bundle layout provides.
+        runGuestCommand(
+            proot = runtime.proot,
+            command = "set -e; cd /usr/local/lib/qwen.updating; " +
+                "mkdir -p node_modules/.bin; " +
+                "ln -sfn ../@qwen-code/qwen-code/cli-entry.js node_modules/.bin/qwen; " +
+                "mkdir -p /usr/local/bin; " +
+                "ln -sfn /usr/local/lib/qwen.updating/node_modules/.bin/qwen /usr/local/bin/qwen",
+            displayCommand = "ln -sfn qwen launcher",
+            fraction = 0.7f,
+            timeoutMs = 60_000L,
+            onProgress = onProgress,
+            failureMessage = str(R.string.rt_install_qwen_update_failed),
+        )
+        val verified = runCatching {
+            runGuestCommand(
+                proot = runtime.proot,
+                command = "$QWEN_GUEST_PATH --version",
+                displayCommand = "qwen --version",
+                fraction = 0.85f,
+                timeoutMs = 2L * 60L * 1000L,
+                onProgress = onProgress,
+                failureMessage = str(R.string.rt_install_update_verify_failed, "Qwen Code $expectedVersion"),
+            )
+        }
+        if (verified.isFailure) {
+            runCatching {
+                runGuestCommand(
+                    proot = runtime.proot,
+                    command = "set -e; rm -rf /usr/local/lib/qwen.updating; " +
+                        "ln -sfn /usr/local/lib/qwen/node_modules/.bin/qwen /usr/local/bin/qwen",
+                    displayCommand = "restore Qwen Code launcher",
+                    fraction = 0.9f,
+                    timeoutMs = 60_000L,
+                    onProgress = onProgress,
+                    failureMessage = str(R.string.rt_install_qwen_update_failed),
+                )
+            }
+            verified.getOrThrow()
+        }
+        runGuestCommand(
+            proot = runtime.proot,
+            command = "set -e; previous=/usr/local/lib/qwen.previous; current=/usr/local/lib/qwen; " +
+                "next=/usr/local/lib/qwen.updating; rm -rf \"\$previous\"; " +
+                "if [ -d \"\$current\" ]; then mv \"\$current\" \"\$previous\"; fi; " +
+                "mv \"\$next\" \"\$current\"; " +
+                "ln -sfn /usr/local/lib/qwen/node_modules/.bin/qwen /usr/local/bin/qwen; " +
+                "rm -rf \"\$previous\"",
+            displayCommand = "activate Qwen Code",
+            fraction = 0.95f,
+            timeoutMs = 5L * 60L * 1000L,
+            onProgress = onProgress,
+            failureMessage = str(R.string.rt_install_qwen_update_failed),
+        )
+        qwenMarker.writeText(expectedVersion)
+    }
+
     private fun fetchAgyManifest(): JSONObject = JSONObject(
         fetchText("https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_arm64.json"),
     )
@@ -632,6 +736,31 @@ class RuntimeInstaller(private val context: Context) {
         verifyGuest(proot, "/usr/local/bin/dsh --profile headless --help", str(R.string.rt_install_verify_failed, "DeepSeek Harness"))
         require(isAgentInstalled(com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS)) {
             "The DeepSeek Harness runtime bundle is incomplete"
+        }
+    }
+
+    private suspend fun ensureQwenInstalled(
+        proot: File,
+        fraction: Float,
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
+        if (isAgentInstalled(com.jarves.mh.model.AgentKind.QWEN_CODE)) return
+        // Remove partial or unsupported npm updates before restoring the bundled
+        // pinned release; project files and conversations live outside this overlay.
+        File(rootfs, "usr/local/lib/qwen").deleteRecursively()
+        File(rootfs, "usr/local/lib/qwen.updating").deleteRecursively()
+        File(rootfs, "usr/local/lib/qwen.previous").deleteRecursively()
+        qwenMarker.delete()
+        installRuntimeOverlay(
+            bundle = QWEN_BUNDLE,
+            message = str(R.string.rt_install_installing_version, "Qwen Code", QWEN_VERSION),
+            from = fraction,
+            to = 0.995f,
+            onProgress = onProgress,
+        )
+        verifyGuest(proot, "$QWEN_GUEST_PATH --version", str(R.string.rt_install_verify_failed, "Qwen Code"))
+        require(isAgentInstalled(com.jarves.mh.model.AgentKind.QWEN_CODE)) {
+            "The Qwen Code runtime bundle is incomplete"
         }
     }
 
@@ -1950,6 +2079,9 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
         private val CLAUDE_VERSION_PATTERN = Regex("[0-9]+\\.[0-9]+\\.[0-9]+")
         /** Pinned DeepSeek Harness release installed via npm inside the guest (verified 2026-09-06). */
         const val DSH_VERSION = "0.1.2-rc.1"
+        /** Pinned Qwen Code release shipped as a checksum-verified npm bundle (verified 2026-10-21). */
+        const val QWEN_VERSION = "0.25.3"
+        const val QWEN_GUEST_PATH = "/usr/local/bin/qwen"
         private const val DSH_ANDROID_COMPATIBILITY_VERSION = "copyfile-excl-v1"
         private val CORE_BUNDLE = RuntimeBundle(
             label = "Core",
@@ -1988,6 +2120,12 @@ printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decis
             fileName = "pocketdev-agy-arm64-2026.09.1.tar.zst",
             sha256 = "a659ab9188956fc4721ca86fb21b5118e0e489f47a5e02ae6b4f2fb423659d78",
             compressedBytes = 41_870_025L,
+        )
+        private val QWEN_BUNDLE = RuntimeBundle(
+            label = "Qwen Code",
+            fileName = "pocketdev-qwen-arm64-2026.09.1.tar.zst",
+            sha256 = "21ae0fd21366d32bc84e2fc47600521eb93ff44d4211deba12b97b04328c4e98",
+            compressedBytes = 25_711_015L,
         )
         private const val MAX_TERMINAL_LINE = 500
         private const val MAX_COLLECTED_OUTPUT = 24_000

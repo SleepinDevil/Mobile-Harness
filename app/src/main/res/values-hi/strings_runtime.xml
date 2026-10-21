@@ -18,6 +18,7 @@
     <string name="rt_install_installing_named">%1$s इंस्टॉल हो रहा है</string>
     <string name="rt_install_newer_release">%1$s का नया रिलीज़ उपलब्ध हुआ है। अपडेट करने से पहले फिर से जाँचें।</string>
     <string name="rt_install_dsh_update_failed">DeepSeek Harness अपडेट विफल रहा; इंस्टॉल किया गया संस्करण सुरक्षित रखा गया</string>
+    <string name="rt_install_qwen_update_failed">Qwen Code अपडेट विफल रहा; इंस्टॉल किया गया संस्करण सुरक्षित रखा गया</string>
     <string name="rt_install_stack_ready">%1$s टूल तैयार हैं</string>
     <string name="rt_install_web_not_removable">वेब टूल कोर रनटाइम का हिस्सा हैं और हटाए नहीं जा सकते</string>
     <string name="rt_install_removing_stack">%1$s टूल हटाए जा रहे हैं</string>
