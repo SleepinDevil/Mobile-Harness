@@ -122,7 +122,7 @@ git submodule update --init --recursive
 - **NDK 28.2.13676358** default (override `-PmhNdkVersion`), CMake 3.22.1, ABI `arm64-v8a` only.
 - **No version catalog** — dependencies inline in `app/build.gradle.kts`; `RepositoriesMode.FAIL_ON_PROJECT_REPOS` means new repos go in `settings.gradle.kts` only.
 - Key deps: Compose BOM 2025.02.00, lifecycle 2.8.7, coroutines 1.9.0, commons-compress + zstd-jni (rootfs extraction). Package manager = Gradle wrapper (`./gradlew`), nothing else.
-- Runtime bundle sources: GitHub release `runtime-2026.09.4` (`RUNTIME_RELEASE_BASE_URL`), Ubuntu base from cdimage.ubuntu.com, Android SDK/Gradle/offline Maven from `appdevforall.org/dev-assets/debug` — all SHA-256-pinned in `RuntimeInstaller.kt`.
+- Runtime bundle sources: GitHub release `runtime-2026.09.4` **on the SleepinDevil fork** (`RUNTIME_RELEASE_BASE_URL` in `app/build.gradle.kts`; mirror of upstream + the Qwen bundle — upstream `techjarves/runtime-2026.09.4` lacks `pocketdev-qwen`), Ubuntu base from cdimage.ubuntu.com, Android SDK/Gradle/offline Maven from `appdevforall.org/dev-assets/debug` — all SHA-256-pinned in `RuntimeInstaller.kt`.
 - Target device: ARM64 Android 9+, 4 GB RAM, ~2.5 GB free. PRoot limits: no Docker/KVM/systemd/full PTY in guest.
 - `test-secrets.properties` (gitignored, root): optional `openrouter.apiKey` → debug `BuildConfig.TEST_OPENROUTER_API_KEY` seeds a test provider on first debug launch.
 
