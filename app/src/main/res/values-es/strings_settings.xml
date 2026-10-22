@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">Reemplazado · solo depuración</string>
     <string name="st_use_and_check">Usar y comprobar</string>
     <string name="st_use_custom_model_id">Usar ID de modelo personalizado:</string>
+    <string name="st_harness_title">Ajustes del agente</string>
+    <string name="st_harness_subtitle">Límites de turnos y registros de ejecución de los agentes de código</string>
+    <string name="st_harness_max_turns">Turnos máximos de sesión</string>
+    <string name="st_harness_max_wall">Tiempo máximo (minutos)</string>
+    <string name="st_harness_qwen_turns_support">Se escribe en model.maxSessionTurns de %1$s. Auméntalo cuando una tarea larga se detenga con «Reached max session turns».</string>
+    <string name="st_harness_claude_turns_support">--max-turns que recibe Claude Code. 0 quita el límite.</string>
+    <string name="st_harness_wall_support">Se pasa a Qwen Code como --max-wall-time. Las tareas más largas se detienen.</string>
+    <string name="st_harness_reset">Restablecer valores</string>
+    <string name="st_harness_logs_title">Registros de ejecución</string>
+    <string name="st_harness_logs_subtitle">Salida sin procesar del agente (stdout + stderr) de las últimas ejecuciones, incluidos los errores que detienen una tarea</string>
+    <string name="st_harness_logs_empty">Aún no hay registros. Envía un prompt y vuelve aquí.</string>
+    <string name="st_harness_logs_clear">Borrar registros</string>
+    <string name="st_harness_logs_cleared">Registros del agente borrados</string>
+    <string name="st_harness_log_open_title">Registro del agente</string>
+    <string name="st_harness_log_copy">Copiar registro</string>
+    <string name="st_harness_log_missing">Este registro ya no está disponible.</string>
+    <string name="st_harness_log_failed">Error</string>
+    <string name="st_harness_log_failed_exit">Error · salida %1$d</string>
+    <string name="st_harness_log_ok">Completado</string>
 </resources>

@@ -3,6 +3,7 @@ package com.jarves.mh.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -27,6 +28,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
@@ -67,6 +71,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -104,12 +109,14 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.ui.res.stringResource
 import com.jarves.mh.R
 import com.jarves.mh.runtime.AntigravityAuthStatus
+import com.jarves.mh.runtime.QwenRuntimeBridge
+import com.jarves.mh.runtime.RuntimeLogEntry
 import com.jarves.mh.ui.theme.AppLanguage
 import com.jarves.mh.ui.theme.AppThemeMode
 import com.jarves.mh.ui.theme.PocketOrange
 import kotlinx.coroutines.launch
 
-private enum class SettingsSection { APPEARANCE, LANGUAGE, TOOLS, RUNTIME, DIAGNOSTICS, UPDATE_CHANNEL }
+private enum class SettingsSection { APPEARANCE, LANGUAGE, TOOLS, RUNTIME, HARNESS, DIAGNOSTICS, UPDATE_CHANNEL }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,8 +151,16 @@ fun SettingsScreen(
     onRefreshDiagnostics: () -> Unit = {},
     onStopInactiveProcesses: () -> Unit = {},
     onClearRuntimeCache: () -> Unit = {},
+    onSetHarnessMaxTurns: (AgentKind, Int) -> Unit = { _, _ -> },
+    onSetHarnessMaxWallMinutes: (Int) -> Unit = {},
+    onResetHarnessLimits: () -> Unit = {},
+    onRefreshHarnessLogs: () -> Unit = {},
+    onOpenHarnessLog: (String) -> Unit = {},
+    onCloseHarnessLog: () -> Unit = {},
+    onClearHarnessLogs: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     var expanded by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
     var terminalCleared by remember { mutableStateOf(false) }
     var showReliabilityHelp by rememberSaveable { mutableStateOf(false) }
@@ -167,6 +182,31 @@ fun SettingsScreen(
                 ) { Text(stringResource(R.string.action_remove), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { stackPendingRemoval = null }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
+    state.harnessLogContent?.let { log ->
+        AlertDialog(
+            onDismissRequest = onCloseHarnessLog,
+            title = { Text(stringResource(R.string.st_harness_log_open_title), style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    SelectionContainer {
+                        Text(
+                            log.text.ifBlank { stringResource(R.string.st_harness_log_missing) },
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { clipboard.setText(AnnotatedString(log.text)) }) {
+                    Text(stringResource(R.string.st_harness_log_copy))
+                }
+            },
+            dismissButton = { TextButton(onClick = onCloseHarnessLog) { Text(stringResource(R.string.action_close)) } },
         )
     }
 
@@ -456,6 +496,87 @@ fun SettingsScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                             ) { Text(stringResource(R.string.st_open_developer_options)) }
+                        }
+                    }
+                }
+            }
+
+            item {
+                SettingsAccordion(
+                    title = stringResource(R.string.st_harness_title),
+                    subtitle = stringResource(R.string.st_harness_subtitle),
+                    icon = Icons.Default.SmartToy,
+                    expanded = expanded == SettingsSection.HARNESS,
+                    onClick = {
+                        val opening = expanded != SettingsSection.HARNESS
+                        toggle(SettingsSection.HARNESS)
+                        if (opening) onRefreshHarnessLogs()
+                    },
+                ) {
+                    Text(
+                        AgentKind.QWEN_CODE.localizedTitle(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_max_turns),
+                        value = state.qwenMaxSessionTurns,
+                        supporting = stringResource(
+                            R.string.st_harness_qwen_turns_support,
+                            "${QwenRuntimeBridge.QWEN_HOME_GUEST_PATH}/settings.json",
+                        ),
+                        onCommit = { onSetHarnessMaxTurns(AgentKind.QWEN_CODE, it) },
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_max_wall),
+                        value = state.qwenMaxWallMinutes,
+                        supporting = stringResource(R.string.st_harness_wall_support),
+                        onCommit = onSetHarnessMaxWallMinutes,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        AgentKind.CLAUDE_CODE.localizedTitle(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    HarnessLimitField(
+                        label = stringResource(R.string.st_harness_max_turns),
+                        value = state.claudeMaxTurns,
+                        supporting = stringResource(R.string.st_harness_claude_turns_support),
+                        onCommit = { onSetHarnessMaxTurns(AgentKind.CLAUDE_CODE, it) },
+                    )
+                    TextButton(onClick = onResetHarnessLimits) {
+                        Text(stringResource(R.string.st_harness_reset))
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.st_harness_logs_title), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                stringResource(R.string.st_harness_logs_subtitle),
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        IconButton(onClick = onRefreshHarnessLogs) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.diagnostics_refresh), Modifier.size(18.dp))
+                        }
+                        TextButton(onClick = onClearHarnessLogs, enabled = state.harnessLogs.isNotEmpty()) {
+                            Text(stringResource(R.string.st_harness_logs_clear), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    if (state.harnessLogs.isEmpty()) {
+                        Text(
+                            stringResource(R.string.st_harness_logs_empty),
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        state.harnessLogs.forEach { entry ->
+                            HarnessLogRow(entry) { onOpenHarnessLog(entry.id) }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                         }
                     }
                 }
@@ -1112,5 +1233,65 @@ private fun DebugUpdateChannelSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** Numeric harness-limit editor; commits each valid change so the ViewModel clamps and persists. */
+@Composable
+private fun HarnessLimitField(
+    label: String,
+    value: Int,
+    supporting: String,
+    onCommit: (Int) -> Unit,
+) {
+    var text by rememberSaveable(label) { mutableStateOf(value.toString()) }
+    LaunchedEffect(value) {
+        text.toIntOrNull()?.takeIf { it != value }?.let { text = value.toString() }
+    }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { raw ->
+            val digits = raw.filter(Char::isDigit).take(3)
+            text = digits
+            digits.toIntOrNull()?.let(onCommit)
+        },
+        label = { Text(label, fontSize = 13.sp) },
+        supportingText = { Text(supporting, fontSize = 11.sp) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun HarnessLogRow(entry: RuntimeLogEntry, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(AgentKind.fromStored(entry.agentId).localizedTitle(), fontWeight = FontWeight.Medium, fontSize = 13.sp)
+            Text(
+                buildString {
+                    append(DateUtils.getRelativeTimeSpanString(entry.startedAtMillis).toString())
+                    if (entry.projectSlug.isNotBlank()) append(" · ").append(entry.projectSlug)
+                },
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(
+            if (entry.failed) {
+                entry.exitCode?.let { stringResource(R.string.st_harness_log_failed_exit, it) }
+                    ?: stringResource(R.string.st_harness_log_failed)
+            } else {
+                stringResource(R.string.st_harness_log_ok)
+            },
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (entry.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+        )
     }
 }

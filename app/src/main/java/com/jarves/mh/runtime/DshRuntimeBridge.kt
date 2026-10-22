@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.jarves.mh.R
 import com.jarves.mh.ui.AppStrings
+import com.jarves.mh.model.AgentKind
 import com.jarves.mh.model.ChangeItem
 import com.jarves.mh.model.ChatMessage
 import com.jarves.mh.model.DevStack
@@ -46,6 +47,7 @@ class DshRuntimeBridge(
     private val secretFor: (ProviderProfile) -> String?,
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
+    private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
     private val checkpoints = WorkspaceCheckpoints(context.filesDir, context)
     private val eventBus = MutableSharedFlow<RuntimeEvent>(extraBufferCapacity = 64)
     override val events: Flow<RuntimeEvent> = eventBus
@@ -86,6 +88,8 @@ class DshRuntimeBridge(
             return@withContext sessionId
         }
 
+        val sessionStartedAt = System.currentTimeMillis()
+        val sessionLog = runtimeLogs.newLogFile(AgentKind.DEEPSEEK_HARNESS.stableId, projectSlug, sessionId)
         var openRouterGateway: OpenRouterRoutingGateway? = null
         runCatching {
             RuntimeTaskController.stopAction = {
@@ -142,6 +146,7 @@ class DshRuntimeBridge(
                 // hard-link emulation turns that rename into a dangling `.l2s`
                 // symlink after the temp file is removed, losing the real file.
                 emulateHardLinks = false,
+                outputFile = sessionLog,
             )
             activeProcess = process
             if (userStopRequested) process.destroy()
@@ -155,6 +160,10 @@ class DshRuntimeBridge(
             )
             val exit = process.waitFor()
             Log.d("DshBridge", "SDK process exited with code $exit")
+            runtimeLogs.record(
+                sessionLog, AgentKind.DEEPSEEK_HARNESS.stableId, projectSlug, sessionStartedAt, exit,
+                failed = !sdkResult.completed || sdkResult.failure.isNotBlank(),
+            )
             val changed = checkpoints.changedFiles(workspace, before)
             if (changed.isNotEmpty()) {
                 Log.d("DshBridge", "Changed files: $changed")
@@ -181,6 +190,7 @@ class DshRuntimeBridge(
         }.onFailure { error ->
             Log.e("DshBridge", "Session failed", error)
             val message = friendlyError(error)
+            runtimeLogs.record(sessionLog, AgentKind.DEEPSEEK_HARNESS.stableId, projectSlug, sessionStartedAt, null, failed = true, reason = message)
             emitFailureOnce(sessionId, message)
             if (userStopRequested) {
                 cancelForegroundRuntime()

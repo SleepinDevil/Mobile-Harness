@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import com.jarves.mh.R
 import com.jarves.mh.ui.AppStrings
+import com.jarves.mh.model.AgentKind
 import com.jarves.mh.model.ChatMessage
 import com.jarves.mh.model.ChangeItem
 import com.jarves.mh.model.ProjectKind
@@ -183,6 +184,7 @@ class AntigravityRuntimeBridge(
     private val saveConversationId: (String, String) -> Unit,
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
+    private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
     private val checkpoints = WorkspaceCheckpoints(context.filesDir, context)
     private val eventBus = MutableSharedFlow<RuntimeEvent>(extraBufferCapacity = 64)
     override val events: Flow<RuntimeEvent> = eventBus
@@ -333,6 +335,7 @@ class AntigravityRuntimeBridge(
             return@withContext sessionId
         }
 
+        val sessionLog = runtimeLogs.newLogFile(AgentKind.ANTIGRAVITY.stableId, projectSlug, sessionId)
         runCatching {
             RuntimeTaskController.stopAction = {
                 userStopRequested = true
@@ -353,6 +356,7 @@ class AntigravityRuntimeBridge(
                 command,
                 guestWorkspacePath = "/workspace/$projectSlug",
                 emulateHardLinks = false,
+                outputFile = sessionLog,
             )
             activeProcess = process
             if (userStopRequested) process.destroy()
@@ -464,6 +468,7 @@ class AntigravityRuntimeBridge(
             if (paths.isNotEmpty()) {
                 eventBus.emit(RuntimeEvent.FilesChanged(sessionId, checkpoints.buildChangeDetails(projectId, workspace, paths)))
             }
+            runtimeLogs.record(sessionLog, AgentKind.ANTIGRAVITY.stableId, projectSlug, sessionStartedAtMillis, null, failed = false)
             emitCompleted(sessionId)
             finishForegroundRuntime(true, projectSlug, AppStrings.get(context, R.string.rt_bridge_finished_in, "Antigravity", projectSlug))
         }.onFailure {
@@ -473,6 +478,7 @@ class AntigravityRuntimeBridge(
             } else {
                 antigravityFriendlyError(it.message.orEmpty(), diagnostic)
             }
+            runtimeLogs.record(sessionLog, AgentKind.ANTIGRAVITY.stableId, projectSlug, sessionStartedAtMillis, null, failed = !userStopRequested, reason = message)
             emitFailure(sessionId, message)
             if (userStopRequested) cancelForegroundRuntime()
             else finishForegroundRuntime(false, projectSlug, message)

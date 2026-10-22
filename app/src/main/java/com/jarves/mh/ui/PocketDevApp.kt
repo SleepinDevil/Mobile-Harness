@@ -2573,6 +2573,13 @@ private fun RootScreenHost(
                     onRefreshDiagnostics = viewModel::refreshDeveloperDiagnostics,
                     onStopInactiveProcesses = viewModel::stopInactiveDeveloperProcesses,
                     onClearRuntimeCache = viewModel::clearDeveloperRuntimeCache,
+                    onSetHarnessMaxTurns = viewModel::setHarnessMaxTurns,
+                    onSetHarnessMaxWallMinutes = viewModel::setHarnessMaxWallMinutes,
+                    onResetHarnessLimits = viewModel::resetHarnessLimits,
+                    onRefreshHarnessLogs = viewModel::refreshHarnessLogs,
+                    onOpenHarnessLog = viewModel::openHarnessLog,
+                    onCloseHarnessLog = viewModel::closeHarnessLog,
+                    onClearHarnessLogs = viewModel::clearHarnessLogs,
                 )
             }
         }

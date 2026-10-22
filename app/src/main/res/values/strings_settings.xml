@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">Overridden · debug only</string>
     <string name="st_use_and_check">Use &amp; check</string>
     <string name="st_use_custom_model_id">Use custom model ID:</string>
+    <string name="st_harness_title">Harness settings</string>
+    <string name="st_harness_subtitle">Turn limits and run logs for the coding agents</string>
+    <string name="st_harness_max_turns">Max session turns</string>
+    <string name="st_harness_max_wall">Max wall time (minutes)</string>
+    <string name="st_harness_qwen_turns_support">Written to model.maxSessionTurns in %1$s. Raise it when a long task stops with \"Reached max session turns\".</string>
+    <string name="st_harness_claude_turns_support">--max-turns passed to Claude Code. 0 removes the limit.</string>
+    <string name="st_harness_wall_support">Passed to Qwen Code as --max-wall-time. Tasks running longer are stopped.</string>
+    <string name="st_harness_reset">Reset to defaults</string>
+    <string name="st_harness_logs_title">Run logs</string>
+    <string name="st_harness_logs_subtitle">Raw harness output (stdout + stderr) for recent runs, including errors that stop a task</string>
+    <string name="st_harness_logs_empty">No harness runs recorded yet. Send a prompt, then return here.</string>
+    <string name="st_harness_logs_clear">Clear logs</string>
+    <string name="st_harness_logs_cleared">Harness logs cleared</string>
+    <string name="st_harness_log_open_title">Harness log</string>
+    <string name="st_harness_log_copy">Copy log</string>
+    <string name="st_harness_log_missing">This log is no longer available.</string>
+    <string name="st_harness_log_failed">Failed</string>
+    <string name="st_harness_log_failed_exit">Failed · exit %1$d</string>
+    <string name="st_harness_log_ok">Completed</string>
 </resources>

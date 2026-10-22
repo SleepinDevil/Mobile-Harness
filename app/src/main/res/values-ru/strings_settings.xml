@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">Переопределено · только отладка</string>
     <string name="st_use_and_check">Использовать и проверить</string>
     <string name="st_use_custom_model_id">Использовать свой ID модели:</string>
+    <string name="st_harness_title">Настройки агентов</string>
+    <string name="st_harness_subtitle">Лимиты ходов и журналы запусков код-агентов</string>
+    <string name="st_harness_max_turns">Макс. ходов сессии</string>
+    <string name="st_harness_max_wall">Макс. время работы (минуты)</string>
+    <string name="st_harness_qwen_turns_support">Записывается в model.maxSessionTurns в %1$s. Увеличьте, если длинная задача останавливается с «Reached max session turns».</string>
+    <string name="st_harness_claude_turns_support">--max-turns для Claude Code. 0 снимает ограничение.</string>
+    <string name="st_harness_wall_support">Передается Qwen Code как --max-wall-time. Задачи дольше этого времени останавливаются.</string>
+    <string name="st_harness_reset">Сбросить значения</string>
+    <string name="st_harness_logs_title">Журналы запусков</string>
+    <string name="st_harness_logs_subtitle">Необработанный вывод агента (stdout + stderr) последних запусков, включая ошибки, остановившие задачу</string>
+    <string name="st_harness_logs_empty">Журналов ещё нет. Отправьте запрос, затем вернитесь сюда.</string>
+    <string name="st_harness_logs_clear">Очистить журналы</string>
+    <string name="st_harness_logs_cleared">Журналы агентов очищены</string>
+    <string name="st_harness_log_open_title">Журнал агента</string>
+    <string name="st_harness_log_copy">Копировать журнал</string>
+    <string name="st_harness_log_missing">Этот журнал больше недоступен.</string>
+    <string name="st_harness_log_failed">Сбой</string>
+    <string name="st_harness_log_failed_exit">Сбой · код %1$d</string>
+    <string name="st_harness_log_ok">Выполнено</string>
 </resources>

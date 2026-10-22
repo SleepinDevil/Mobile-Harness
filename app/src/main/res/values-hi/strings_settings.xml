@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">ओवरराइड किया गया · केवल डिबग</string>
     <string name="st_use_and_check">उपयोग करें और जाँचें</string>
     <string name="st_use_custom_model_id">कस्टम मॉडल ID उपयोग करें:</string>
+    <string name="st_harness_title">हार्नेस सेटिंग्स</string>
+    <string name="st_harness_subtitle">कोडिंग एजेंट्स के लिए टर्न सीमाएँ और रन लॉग</string>
+    <string name="st_harness_max_turns">अधिकतम सत्र टर्न</string>
+    <string name="st_harness_max_wall">अधिकतम समय (मिनट)</string>
+    <string name="st_harness_qwen_turns_support">इसे %1$s में model.maxSessionTurns के रूप में लिखा जाता है। लंबा कार्य \"Reached max session turns\" से रुकने पर इसे बढ़ाएँ।</string>
+    <string name="st_harness_claude_turns_support">Claude Code को भेजा जाने वाला --max-turns। 0 सीमा हटाता है।</string>
+    <string name="st_harness_wall_support">Qwen Code को --max-wall-time के रूप में भेजा जाता है। इससे लंबा कार्य रुक जाता है।</string>
+    <string name="st_harness_reset">डिफ़ॉल्ट पर रीसेट करें</string>
+    <string name="st_harness_logs_title">रन लॉग</string>
+    <string name="st_harness_logs_subtitle">हाल के रनों का मूल हार्नेस आउटपुट (stdout + stderr), उन त्रुटियों सहित जिनसे कार्य रुकता है</string>
+    <string name="st_harness_logs_empty">अभी कोई रन लॉग नहीं है। एक प्रॉम्प्ट भेजें, फिर यहाँ लौटें।</string>
+    <string name="st_harness_logs_clear">लॉग साफ़ करें</string>
+    <string name="st_harness_logs_cleared">हार्नेस लॉग साफ़ हो गए</string>
+    <string name="st_harness_log_open_title">हार्नेस लॉग</string>
+    <string name="st_harness_log_copy">लॉग कॉपी करें</string>
+    <string name="st_harness_log_missing">यह लॉग अब उपलब्ध नहीं है।</string>
+    <string name="st_harness_log_failed">विफल</string>
+    <string name="st_harness_log_failed_exit">विफल · एग्ज़िट %1$d</string>
+    <string name="st_harness_log_ok">पूर्ण</string>
 </resources>

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.jarves.mh.R
 import com.jarves.mh.ui.AppStrings
+import com.jarves.mh.model.AgentKind
 import com.jarves.mh.model.ChatMessage
 import com.jarves.mh.model.ChangeItem
 import com.jarves.mh.model.DiffLine
@@ -70,8 +71,10 @@ internal object ProviderRuntimeErrorDetector {
 class ClaudeRuntimeBridge(
     private val context: Context,
     private val secretFor: (ProviderProfile) -> String?,
+    private val maxTurns: () -> Int = { DEFAULT_MAX_TURNS },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
+    private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
     private val eventBus = MutableSharedFlow<RuntimeEvent>(extraBufferCapacity = 64)
     override val events: Flow<RuntimeEvent> = eventBus
     private val pending = ConcurrentHashMap<String, PendingPermission>()
@@ -122,6 +125,8 @@ class ClaudeRuntimeBridge(
             return@withContext sessionId
         }
 
+        val sessionStartedAt = System.currentTimeMillis()
+        val sessionLog = runtimeLogs.newLogFile(AgentKind.CLAUDE_CODE.stableId, projectSlug, sessionId)
         var formatGateway: LocalFormatGateway? = null
         var openRouterGateway: OpenRouterRoutingGateway? = null
         runCatching {
@@ -176,8 +181,10 @@ class ClaudeRuntimeBridge(
                 add("--verbose")
                 add("--model")
                 add(launch.environment["ANTHROPIC_MODEL"] ?: provider.model)
-                add("--max-turns")
-                add("25")
+                maxTurns().takeIf { it > 0 }?.let { limit ->
+                    add("--max-turns")
+                    add(limit.toString())
+                }
             }
             Log.d("ClaudeBridge", "Launching command: $command")
             val process = installer.process(
@@ -187,6 +194,7 @@ class ClaudeRuntimeBridge(
                 launch.environment,
                 command,
                 guestWorkspacePath = guestWorkspacePath,
+                outputFile = sessionLog,
             )
             activeProcess = process
             if (userStopRequested) process.destroy()
@@ -238,6 +246,10 @@ class ClaudeRuntimeBridge(
                 }
                 val exit = process.waitFor()
                 Log.d("ClaudeBridge", "Process exited with code $exit")
+                runtimeLogs.record(
+                    sessionLog, AgentKind.CLAUDE_CODE.stableId, projectSlug, sessionStartedAt, exit,
+                    failed = exit != 0 && !finishedSessions.contains(sessionId),
+                )
                 permissionWatcher.cancelAndJoin()
                 pending.values.filter { it.request.sessionId == sessionId }.forEach { permission ->
                     permission.response.writeText("deny")
@@ -267,6 +279,7 @@ class ClaudeRuntimeBridge(
         }.onFailure { error ->
             Log.e("ClaudeBridge", "Session failed", error)
             val message = friendlyError(error)
+            runtimeLogs.record(sessionLog, AgentKind.CLAUDE_CODE.stableId, projectSlug, sessionStartedAt, null, failed = true, reason = message)
             emitFailureOnce(sessionId, message)
             if (userStopRequested) {
                 cancelForegroundRuntime()
@@ -1106,6 +1119,7 @@ class ClaudeRuntimeBridge(
     private class ProviderSessionException(message: String) : IllegalStateException(message)
 
     companion object {
+        const val DEFAULT_MAX_TURNS = 25
         private const val MAX_DIFF_LINES = 2_000
         private const val MAX_RENDERED_DIFF_LINES = 600
         private const val MAX_DIFF_FILE_BYTES = 1_000_000L

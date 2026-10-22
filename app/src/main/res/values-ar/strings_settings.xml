@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">تم التجاوز · للتصحيح فقط</string>
     <string name="st_use_and_check">استخدام وتحقق</string>
     <string name="st_use_custom_model_id">استخدام معرّف نموذج مخصص:</string>
+    <string name="st_harness_title">إعدادات المحرك</string>
+    <string name="st_harness_subtitle">حدود الأدوار وسجلات التشغيل لوكلاء البرمجة</string>
+    <string name="st_harness_max_turns">الحد الأقصى لأدوار الجلسة</string>
+    <string name="st_harness_max_wall">الحد الأقصى للوقت (دقائق)</string>
+    <string name="st_harness_qwen_turns_support">تُكتب في model.maxSessionTurns داخل %1$s. ارفعها عندما تتوقف مهمة طويلة برسالة «Reached max session turns».</string>
+    <string name="st_harness_claude_turns_support">خيار --max-turns المارر إلى Claude Code. القيمة 0 تزيل الحد.</string>
+    <string name="st_harness_wall_support">يُمرر إلى Qwen Code كـ --max-wall-time. أي مهمة تتجاوز هذا الوقت تتوقف.</string>
+    <string name="st_harness_reset">إعادة التعيين إلى الافتراضي</string>
+    <string name="st_harness_logs_title">سجلات التشغيل</string>
+    <string name="st_harness_logs_subtitle">مخرجات المحرك الخام (stdout + stderr) لأحدث التشغيلات، بما في ذلك الأخطاء التي توقف المهمة</string>
+    <string name="st_harness_logs_empty">لا توجد سجلات بعد. أرسل مطالبة ثم عد إلى هنا.</string>
+    <string name="st_harness_logs_clear">مسح السجلات</string>
+    <string name="st_harness_logs_cleared">تم مسح سجلات المحرك</string>
+    <string name="st_harness_log_open_title">سجل المحرك</string>
+    <string name="st_harness_log_copy">نسخ السجل</string>
+    <string name="st_harness_log_missing">هذا السجل لم يعد متاحًا.</string>
+    <string name="st_harness_log_failed">فشل</string>
+    <string name="st_harness_log_failed_exit">فشل · الخروج %1$d</string>
+    <string name="st_harness_log_ok">اكتمل</string>
 </resources>

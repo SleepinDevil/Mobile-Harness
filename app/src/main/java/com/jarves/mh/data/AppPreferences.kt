@@ -116,6 +116,14 @@ class AppPreferences(private val context: Context) {
         get() = preferences.getInt("test_provider_defaults_version", 0)
         set(value) { preferences.edit().putInt("test_provider_defaults_version", value).apply() }
 
+    /** Numeric per-harness tunables surfaced in Settings → Harness settings (e.g. turn caps). */
+    fun agentLimit(agent: AgentKind, key: String, default: Int): Int =
+        preferences.getInt("agent_limit_${agent.stableId}_$key", default)
+
+    fun setAgentLimit(agent: AgentKind, key: String, value: Int) {
+        preferences.edit().putInt("agent_limit_${agent.stableId}_$key", value).apply()
+    }
+
     var lastAppUpdateCheckMillis: Long
         get() = preferences.getLong("last_app_update_check_millis", 0L)
         set(value) { preferences.edit().putLong("last_app_update_check_millis", value).apply() }

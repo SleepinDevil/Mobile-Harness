@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.jarves.mh.R
 import com.jarves.mh.ui.AppStrings
+import com.jarves.mh.model.AgentKind
 import com.jarves.mh.model.ChatMessage
 import com.jarves.mh.model.ChangeItem
 import com.jarves.mh.model.ProviderKind
@@ -41,8 +42,11 @@ import org.json.JSONObject
 class QwenRuntimeBridge(
     private val context: Context,
     private val secretFor: (ProviderProfile) -> String?,
+    private val maxSessionTurns: () -> Int = { DEFAULT_MAX_SESSION_TURNS },
+    private val maxWallMinutes: () -> Int = { DEFAULT_MAX_WALL_MINUTES },
 ) : RuntimeBridge {
     private val installer = RuntimeInstaller(context)
+    private val runtimeLogs = RuntimeLogStore(File(context.filesDir, "runtime-logs"))
     private val checkpoints = WorkspaceCheckpoints(context.filesDir, context)
     private val eventBus = MutableSharedFlow<RuntimeEvent>(extraBufferCapacity = 64)
     override val events: Flow<RuntimeEvent> = eventBus
@@ -102,6 +106,8 @@ class QwenRuntimeBridge(
             return@withContext sessionId
         }
 
+        val sessionStartedAt = System.currentTimeMillis()
+        val sessionLog = runtimeLogs.newLogFile(AgentKind.QWEN_CODE.stableId, projectSlug, sessionId)
         var openRouterGateway: OpenRouterRoutingGateway? = null
         runCatching {
             RuntimeTaskController.stopAction = {
@@ -145,9 +151,9 @@ class QwenRuntimeBridge(
                 add("--model")
                 add(route.model)
                 add("--max-session-turns")
-                add(MAX_SESSION_TURNS.toString())
+                add(maxSessionTurns().toString())
                 add("--max-wall-time")
-                add(MAX_WALL_TIME)
+                add("${maxWallMinutes()}m")
             }
             Log.d("QwenBridge", "Provider: ${provider.kind}, Model: ${route.model}, BaseUrl: ${route.baseUrl}")
             val process = installer.process(
@@ -157,6 +163,7 @@ class QwenRuntimeBridge(
                 launchEnvironment,
                 command,
                 guestWorkspacePath = guestWorkspacePath,
+                outputFile = sessionLog,
             )
             activeProcess = process
             if (userStopRequested) process.destroy()
@@ -202,6 +209,10 @@ class QwenRuntimeBridge(
                 }
                 val exit = process.waitFor()
                 Log.d("QwenBridge", "Process exited with code $exit")
+                runtimeLogs.record(
+                    sessionLog, AgentKind.QWEN_CODE.stableId, projectSlug, sessionStartedAt, exit,
+                    failed = exit != 0 && !finishedSessions.contains(sessionId),
+                )
                 val changed = checkpoints.changedFiles(workspace, before)
                 if (changed.isNotEmpty()) {
                     checkpoints.saveChangedPaths(projectId, changed)
@@ -228,6 +239,7 @@ class QwenRuntimeBridge(
         }.onFailure { error ->
             Log.e("QwenBridge", "Session failed", error)
             val message = friendlyError(error)
+            runtimeLogs.record(sessionLog, AgentKind.QWEN_CODE.stableId, projectSlug, sessionStartedAt, null, failed = true, reason = message)
             emitFailureOnce(sessionId, message)
             if (userStopRequested) {
                 cancelForegroundRuntime()
@@ -512,8 +524,8 @@ class QwenRuntimeBridge(
     }
 
     private fun exitCodeHint(exit: Int): String? = when (exit) {
-        53 -> "Qwen Code reached its ${MAX_SESSION_TURNS}-turn limit before finishing. Narrow the request and try again."
-        55 -> "Qwen Code hit the $MAX_WALL_TIME wall-time or tool-call budget. Narrow the request and try again."
+        53 -> "Qwen Code reached its ${maxSessionTurns()}-turn limit before finishing. Raise the turn limit in Settings → Harness settings or narrow the request and try again."
+        55 -> "Qwen Code hit the ${maxWallMinutes()}-minute wall-time or tool-call budget. Raise it in Settings → Harness settings or narrow the request and try again."
         else -> null
     }
 
@@ -574,7 +586,7 @@ class QwenRuntimeBridge(
                 "model",
                 JSONObject()
                     .put("name", route.model)
-                    .put("maxSessionTurns", MAX_SESSION_TURNS),
+                    .put("maxSessionTurns", maxSessionTurns()),
             )
             .put("tools", JSONObject().put("approvalMode", "yolo"))
             .put("telemetry", JSONObject().put("enabled", false))
@@ -780,8 +792,8 @@ class QwenRuntimeBridge(
     companion object {
         const val QWEN_HOME_GUEST_PATH = "/root/.qwen"
         private const val QWEN_GUEST_PATH = RuntimeInstaller.QWEN_GUEST_PATH
-        private const val MAX_SESSION_TURNS = 25
-        private const val MAX_WALL_TIME = "30m"
+        const val DEFAULT_MAX_SESSION_TURNS = 25
+        const val DEFAULT_MAX_WALL_MINUTES = 30
         private const val FOREGROUND_PROGRESS_MIN_INTERVAL_MS = 750L
         private const val MAX_CONVERSATION_HISTORY_CHARACTERS = 160_000
     }

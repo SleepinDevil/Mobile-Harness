@@ -112,4 +112,23 @@
     <string name="st_update_channel_overridden">已覆盖 · 仅限调试</string>
     <string name="st_use_and_check">使用并检查</string>
     <string name="st_use_custom_model_id">使用自定义模型 ID：</string>
+    <string name="st_harness_title">智能体设置</string>
+    <string name="st_harness_subtitle">编码代理的轮次上限与运行日志</string>
+    <string name="st_harness_max_turns">最大会话轮数</string>
+    <string name="st_harness_max_wall">最大运行时长（分钟）</string>
+    <string name="st_harness_qwen_turns_support">写入 %1$s 的 model.maxSessionTurns。当长任务因“Reached max session turns”停止时，请调高此值。</string>
+    <string name="st_harness_claude_turns_support">传递给 Claude Code 的 --max-turns 参数。0 表示不限。</string>
+    <string name="st_harness_wall_support">以 --max-wall-time 传给 Qwen Code，超时的任务会被停止。</string>
+    <string name="st_harness_reset">恢复默认值</string>
+    <string name="st_harness_logs_title">运行日志</string>
+    <string name="st_harness_logs_subtitle">最近运行的原始引擎输出（stdout + stderr），包含导致任务停止的错误</string>
+    <string name="st_harness_logs_empty">尚无运行记录。发送一次提示词后再回到此处。</string>
+    <string name="st_harness_logs_clear">清除日志</string>
+    <string name="st_harness_logs_cleared">引擎日志已清除</string>
+    <string name="st_harness_log_open_title">引擎日志</string>
+    <string name="st_harness_log_copy">复制日志</string>
+    <string name="st_harness_log_missing">该日志已不可用。</string>
+    <string name="st_harness_log_failed">失败</string>
+    <string name="st_harness_log_failed_exit">失败 · 退出码 %1$d</string>
+    <string name="st_harness_log_ok">已完成</string>
 </resources>

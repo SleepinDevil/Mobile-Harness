@@ -59,6 +59,8 @@ import com.jarves.mh.runtime.AntigravityAuthState
 import com.jarves.mh.runtime.AntigravityAuthStatus
 import com.jarves.mh.runtime.AntigravityRuntimeBridge
 import com.jarves.mh.runtime.QwenRuntimeBridge
+import com.jarves.mh.runtime.RuntimeLogEntry
+import com.jarves.mh.runtime.RuntimeLogStore
 import com.jarves.mh.runtime.NativeSpawnProcess
 import com.jarves.mh.runtime.RuntimeInstallProgress
 import com.jarves.mh.runtime.RuntimeInstaller
@@ -276,6 +278,9 @@ private data class ImportedZipProject(
     val sourceAttachment: ChatAttachment,
 )
 
+/** Open Settings → Harness settings log (id = stored log file name). */
+data class HarnessLogContent(val id: String, val text: String)
+
 data class AppUiState(
     val startupStage: StartupStage = StartupStage.CHECKING,
     val startupProgress: Float = 0f,
@@ -381,6 +386,11 @@ data class AppUiState(
     val antigravityEffort: String = "high",
     val antigravityModels: List<String> = emptyList(),
     val antigravityModelsLoading: Boolean = false,
+    val qwenMaxSessionTurns: Int = QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS,
+    val qwenMaxWallMinutes: Int = QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES,
+    val claudeMaxTurns: Int = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
+    val harnessLogs: List<RuntimeLogEntry> = emptyList(),
+    val harnessLogContent: HarnessLogContent? = null,
     val androidBuildRunning: Boolean = false,
     val androidBuildMessage: String? = null,
     val androidBuildPhase: AndroidBuildPhase = AndroidBuildPhase.IDLE,
@@ -414,9 +424,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val vault = ApiKeyVault(application)
     private val preferences = AppPreferences(application)
-    private val claudeRuntime = ClaudeRuntimeBridge(application) { profile -> vault.get(profile.kind.name) }
+    private val runtimeLogs = RuntimeLogStore(File(application.filesDir, "runtime-logs"))
+    private val claudeRuntime = ClaudeRuntimeBridge(
+        application,
+        secretFor = { profile -> vault.get(profile.kind.name) },
+        maxTurns = { _state.value.claudeMaxTurns },
+    )
     private val dshRuntime = DshRuntimeBridge(application) { profile -> vault.get(profile.kind.name) }
-    private val qwenRuntime = QwenRuntimeBridge(application) { profile -> vault.get(profile.kind.name) }
+    private val qwenRuntime = QwenRuntimeBridge(
+        application,
+        secretFor = { profile -> vault.get(profile.kind.name) },
+        maxSessionTurns = { _state.value.qwenMaxSessionTurns },
+        maxWallMinutes = { _state.value.qwenMaxWallMinutes },
+    )
     private val installer = RuntimeInstaller(application)
     private val antigravityRuntime = AntigravityRuntimeBridge(
         application,
@@ -496,6 +516,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ),
             antigravityModel = preferences.antigravityModel,
             antigravityEffort = preferences.antigravityEffort,
+            qwenMaxSessionTurns = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS),
+            qwenMaxWallMinutes = preferences.agentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES),
+            claudeMaxTurns = preferences.agentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS),
             themeMode = runCatching { com.jarves.mh.ui.theme.AppThemeMode.valueOf(preferences.themeMode.uppercase()) }
                 .getOrDefault(com.jarves.mh.ui.theme.AppThemeMode.DARK),
             languageCode = preferences.languageCode,
@@ -923,6 +946,72 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _state.update { it.copy(toastMessage = str(R.string.diagnostics_cache_cleared)) }
                 lastDiagnosticsRefreshAtElapsedMillis = 0L
                 refreshDeveloperDiagnostics()
+            }
+        }
+    }
+
+    /** Persists a harness turn cap (Claude Code's 0 removes the --max-turns flag). */
+    fun setHarnessMaxTurns(agent: AgentKind, turns: Int) {
+        val minimum = if (agent == AgentKind.CLAUDE_CODE) 0 else 1
+        val clamped = turns.coerceIn(minimum, 999)
+        preferences.setAgentLimit(agent, HARNESS_LIMIT_TURNS, clamped)
+        _state.update { current ->
+            when (agent) {
+                AgentKind.QWEN_CODE -> current.copy(qwenMaxSessionTurns = clamped)
+                AgentKind.CLAUDE_CODE -> current.copy(claudeMaxTurns = clamped)
+                else -> current
+            }
+        }
+    }
+
+    fun setHarnessMaxWallMinutes(minutes: Int) {
+        val clamped = minutes.coerceIn(1, 240)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, clamped)
+        _state.update { it.copy(qwenMaxWallMinutes = clamped) }
+    }
+
+    fun resetHarnessLimits() {
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_TURNS, QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS)
+        preferences.setAgentLimit(AgentKind.QWEN_CODE, HARNESS_LIMIT_WALL_MINUTES, QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES)
+        preferences.setAgentLimit(AgentKind.CLAUDE_CODE, HARNESS_LIMIT_TURNS, ClaudeRuntimeBridge.DEFAULT_MAX_TURNS)
+        _state.update {
+            it.copy(
+                qwenMaxSessionTurns = QwenRuntimeBridge.DEFAULT_MAX_SESSION_TURNS,
+                qwenMaxWallMinutes = QwenRuntimeBridge.DEFAULT_MAX_WALL_MINUTES,
+                claudeMaxTurns = ClaudeRuntimeBridge.DEFAULT_MAX_TURNS,
+            )
+        }
+    }
+
+    fun refreshHarnessLogs() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entries = runtimeLogs.entries()
+            withContext(Dispatchers.Main) { _state.update { it.copy(harnessLogs = entries) } }
+        }
+    }
+
+    fun openHarnessLog(id: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val content = runtimeLogs.read(id)?.let { HarnessLogContent(id, it) }
+            withContext(Dispatchers.Main) { _state.update { it.copy(harnessLogContent = content) } }
+        }
+    }
+
+    fun closeHarnessLog() {
+        _state.update { it.copy(harnessLogContent = null) }
+    }
+
+    fun clearHarnessLogs() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runtimeLogs.clear()
+            withContext(Dispatchers.Main) {
+                _state.update {
+                    it.copy(
+                        harnessLogs = emptyList(),
+                        harnessLogContent = null,
+                        toastMessage = str(R.string.st_harness_logs_cleared),
+                    )
+                }
             }
         }
     }
@@ -5378,6 +5467,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
          * responsive by retaining the latest useful steps instead of composing an unbounded list. */
         private const val MAX_VISIBLE_WORK_ITEMS = 32
         private val DEFERRED_FOLDER_METADATA_NAMES = setOf(".git", ".gradle", "build", "node_modules")
+        private const val HARNESS_LIMIT_TURNS = "max_turns"
+        private const val HARNESS_LIMIT_WALL_MINUTES = "max_wall_minutes"
         private const val MAX_ACTIVITY_DETAIL_CHARS = 8_000
         private const val NOISY_ITEM_SCAN_CHARS = 320
         private const val TRANSCRIPT_WRITE_DEBOUNCE_MS = 500L
